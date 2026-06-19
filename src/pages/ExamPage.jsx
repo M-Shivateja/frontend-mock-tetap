@@ -65,7 +65,7 @@ function ExamPage() {
   useEffect(() => {
     const loadQuestions = async () => {
       try {
-        const response = await axios.get("http://localhost:8000/api/questions");
+        const response = await axios.get("https://backend-mock-tetap-1.onrender.com/api/questions");
         if (response.data && response.data.length > 0) {
           setQuestions(response.data);
         } else {
