@@ -51,14 +51,20 @@ function QuestionCard({ question, selectedAnswer, onSelect }) {
 
                   <div>
                     {isOptionsObj ? (
-                      <div>
+                      option.en && option.te && option.en.trim() !== option.te.trim() ? (
+                        <div>
+                          <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm md:text-base">
+                            {option.en}
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 text-xs md:text-sm">
+                            {option.te}
+                          </div>
+                        </div>
+                      ) : (
                         <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm md:text-base">
-                          {option.en}
+                          {option.en || option.te}
                         </div>
-                        <div className="text-gray-600 dark:text-gray-400 text-xs md:text-sm">
-                          {option.te}
-                        </div>
-                      </div>
+                      )
                     ) : (
                       <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm md:text-base">
                         {option}

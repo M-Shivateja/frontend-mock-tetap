@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 
 function ResultPage() {
   const location = useLocation();
 
-  const { total = 0, correct = 0, answers = {} } = location.state || {};
+  const { total = 0, correct = 0, answers = {}, questions = [] } = location.state || {};
+  const [filter, setFilter] = useState("all"); // "all", "correct", "incorrect", "unattempted"
 
   // If accessed directly without exam state
   if (!total) {
@@ -54,6 +56,19 @@ function ResultPage() {
     ringColor = "stroke-blue-500";
     textColor = "text-blue-500";
   }
+
+  const filteredQuestions = questions.filter((q) => {
+    const qId = q._id || q.id;
+    const selectedIndex = answers[qId];
+    const correctIndex = q.answer !== undefined ? q.answer : q.answerIndex;
+    const isAnswered = selectedIndex !== undefined;
+    const isCorrect = isAnswered && selectedIndex === correctIndex;
+
+    if (filter === "correct") return isCorrect;
+    if (filter === "incorrect") return isAnswered && !isCorrect;
+    if (filter === "unattempted") return !isAnswered;
+    return true;
+  });
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -226,6 +241,181 @@ function ResultPage() {
           </div>
         </div>
       </div>
+
+      {/* Detailed Question Review Section */}
+      {questions.length > 0 && (
+        <div className="mt-12 pt-10 border-t border-[#e5e4e7] dark:border-[#2e303a]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                Detailed Question Review
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Review your answers, see correct options, and check which ones you got correct or wrong.
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "all", label: "All", count: total },
+                { id: "correct", label: "Correct", count: correct },
+                { id: "incorrect", label: "Incorrect", count: wrong },
+                { id: "unattempted", label: "Unattempted", count: skipped },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setFilter(btn.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer ${
+                    filter === btn.id
+                      ? "bg-blue-600 dark:bg-purple-600 text-white shadow-sm"
+                      : "bg-gray-100 hover:bg-gray-200 dark:bg-[#1f2028] dark:hover:bg-[#2e303a] text-gray-600 dark:text-gray-300 border border-[#e5e4e7] dark:border-[#2e303a]"
+                  }`}
+                >
+                  {btn.label} ({btn.count})
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {filteredQuestions.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-[#1f2028] rounded-2xl border border-dashed border-gray-300 dark:border-gray-800">
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                  No questions found in this category.
+                </p>
+              </div>
+            ) : (
+              filteredQuestions.map((q, idx) => {
+                const qId = q._id || q.id;
+                const selectedIndex = answers[qId];
+                const correctIndex = q.answer !== undefined ? q.answer : q.answerIndex;
+                const isAnswered = selectedIndex !== undefined;
+                const isCorrect = isAnswered && selectedIndex === correctIndex;
+
+                const isBilingualObj = q.questionEn && q.questionTe && (q.questionEn.trim() !== q.questionTe.trim());
+                const isOptionsObj = q.options && typeof q.options[0] === "object";
+
+                return (
+                  <div
+                    key={qId}
+                    className={`bg-white dark:bg-[#1f2028] border rounded-2xl p-6 shadow-sm transition-all duration-300 ${
+                      !isAnswered
+                        ? "border-amber-200 dark:border-amber-950/40 bg-amber-50/5"
+                        : isCorrect
+                        ? "border-emerald-200 dark:border-emerald-950/40 bg-emerald-50/5"
+                        : "border-rose-200 dark:border-rose-950/40 bg-rose-50/5"
+                    }`}
+                  >
+                    {/* Badge Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Question {q.questionNo || idx + 1}
+                      </span>
+                      <span
+                        className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                          !isAnswered
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                            : isCorrect
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
+                        }`}
+                      >
+                        {!isAnswered ? "Skipped" : isCorrect ? "Correct" : "Incorrect"}
+                      </span>
+                    </div>
+
+                    {/* Question Text */}
+                    <div className="space-y-2 mb-6">
+                      {isBilingualObj ? (
+                        <>
+                          <h4 className="text-base font-bold text-gray-900 dark:text-white leading-relaxed">
+                            {q.questionEn}
+                          </h4>
+                          <h4 className="text-sm text-indigo-600 dark:text-purple-400 font-semibold leading-relaxed border-l-2 border-indigo-500 pl-3">
+                            {q.questionTe}
+                          </h4>
+                        </>
+                      ) : (
+                        <h4 className="text-base font-bold text-gray-900 dark:text-white leading-relaxed whitespace-pre-line">
+                          {q.questionText || q.questionEn || q.questionTe}
+                        </h4>
+                      )}
+                    </div>
+
+                    {/* Options Review */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {q.options &&
+                        q.options.map((option, optIdx) => {
+                          const isOptionSelected = selectedIndex === optIdx;
+                          const isOptionCorrect = correctIndex === optIdx;
+
+                          let optBorderColor = "border-gray-200 dark:border-[#2e303a]";
+                          let optBgColor = "bg-white dark:bg-[#1f2028]";
+                          let icon = null;
+
+                          if (isOptionCorrect) {
+                            optBorderColor = "border-emerald-500 dark:border-emerald-500";
+                            optBgColor = "bg-emerald-50/20 dark:bg-emerald-950/10";
+                            icon = (
+                              <span className="w-5 h-5 bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs shrink-0 font-bold">
+                                ✓
+                              </span>
+                            );
+                          } else if (isOptionSelected && !isCorrect) {
+                            optBorderColor = "border-rose-500 dark:border-rose-500";
+                            optBgColor = "bg-rose-50/20 dark:bg-rose-950/10";
+                            icon = (
+                              <span className="w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs shrink-0 font-bold">
+                                ✗
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={optIdx}
+                              className={`border-2 p-4 rounded-xl flex items-start gap-3 ${optBorderColor} ${optBgColor}`}
+                            >
+                              <span className="text-xs font-extrabold text-gray-400 bg-gray-100 dark:bg-gray-800 w-5 h-5 rounded-md flex items-center justify-center shrink-0">
+                                {optIdx + 1}
+                              </span>
+                              
+                              <div className="flex-grow">
+                                {isOptionsObj ? (
+                                  option.en && option.te && option.en.trim() !== option.te.trim() ? (
+                                    <div className="space-y-0.5">
+                                      <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                        {option.en}
+                                      </div>
+                                      <div className="text-gray-500 dark:text-gray-400 text-xs">
+                                        {option.te}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                      {option.en || option.te}
+                                    </div>
+                                  )
+                                ) : (
+                                  <div className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                                    {option}
+                                  </div>
+                                )}
+                              </div>
+
+                              {icon}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

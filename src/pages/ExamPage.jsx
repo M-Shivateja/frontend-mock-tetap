@@ -56,6 +56,7 @@ function ExamPage() {
           total: questions.length,
           correct: correctCount,
           answers,
+          questions,
         },
       });
     }
