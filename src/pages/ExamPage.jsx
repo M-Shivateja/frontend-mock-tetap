@@ -31,7 +31,9 @@ function ExamPage() {
 
   const [timeLeft, setTimeLeft] = useState(() => {
     const saved = localStorage.getItem("examTime");
-    return saved ? Number(saved) : 150 * 60;
+    if (saved) return Number(saved);
+    const limit = Number(localStorage.getItem("examLimit")) || 150;
+    return limit * 60;
   });
 
   const submitExam = useCallback((isAuto = false) => {
@@ -45,6 +47,27 @@ function ExamPage() {
           correctCount++;
         }
       });
+
+      // Save test attempt to history
+      const limit = Number(localStorage.getItem("examLimit")) || 150;
+      const offset = Number(localStorage.getItem("examOffset")) || 0;
+      const batchName = `Questions ${offset + 1} - ${offset + questions.length}`;
+
+      const newHistoryItem = {
+        id: `attempt_${Date.now()}`,
+        date: new Date().toLocaleString(),
+        batchName,
+        total: questions.length,
+        correct: correctCount,
+        percentage: Number(((correctCount / questions.length) * 100).toFixed(1)),
+      };
+
+      try {
+        const history = JSON.parse(localStorage.getItem("examHistory") || "[]");
+        localStorage.setItem("examHistory", JSON.stringify([newHistoryItem, ...history]));
+      } catch (e) {
+        console.error("Failed to save exam history", e);
+      }
 
       localStorage.removeItem("examAnswers");
       localStorage.removeItem("examTime");
@@ -67,14 +90,23 @@ function ExamPage() {
     const loadQuestions = async () => {
       try {
         const response = await axios.get("https://backend-mock-tetap-1.onrender.com/api/questions");
+        let allQuestions = [];
         if (response.data && response.data.length > 0) {
-          setQuestions(response.data);
+          allQuestions = response.data;
         } else {
-          setQuestions(localQuestions);
+          allQuestions = localQuestions;
         }
+
+        const limit = Number(localStorage.getItem("examLimit")) || 150;
+        const offset = Number(localStorage.getItem("examOffset")) || 0;
+        const sliced = allQuestions.slice(offset, offset + limit);
+        setQuestions(sliced);
       } catch (error) {
         console.warn("Questions API error, falling back to local questions", error);
-        setQuestions(localQuestions);
+        const limit = Number(localStorage.getItem("examLimit")) || 150;
+        const offset = Number(localStorage.getItem("examOffset")) || 0;
+        const sliced = localQuestions.slice(offset, offset + limit);
+        setQuestions(sliced);
       }
     };
 
